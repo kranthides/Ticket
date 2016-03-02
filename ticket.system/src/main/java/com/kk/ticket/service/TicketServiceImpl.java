@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.log4j.Logger;
 
 import org.hibernate.Criteria;
 import org.hibernate.Session;
@@ -23,21 +24,31 @@ import com.kk.ticket.model.VenueLevel;
 
 public class TicketServiceImpl implements TicketService{
 
-	
+	private static Logger log = Logger.getLogger(TicketServiceImpl.class);
+
 	private static SessionFactory factory;
 	private static int NoOfSeconds =10; 
+	private final static int defaultMinLevel = 1 ;
+	private final static int defaultMaxLevel = 4; 
 	
 	public TicketServiceImpl (SessionFactory sessionFactory){
 		factory = sessionFactory;
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see com.kk.ticket.service.TicketService#numSeatsAvailable(int)
+	 */
+	
 	public int numSeatsAvailable(int levelID) {
-		// TODO Auto-generated method stub
 		
 		Session session = factory.openSession();
 		
 		Criteria c = session.createCriteria(VenueLevel.class);
 		
+		/*
+		 * This conditional will restrict the results to specific level
+		 */
 		if(levelID > 0 ) { 
 			c.add(Restrictions.like("levelID", levelID));
 		}
@@ -55,6 +66,12 @@ public class TicketServiceImpl implements TicketService{
 		return totalRemainingSeats-activeHolds;
 		
 	}
+	/*
+	 * (non-Javadoc)
+	 * @see com.kk.ticket.service.TicketService#findAndHoldSeats(int, int, int, java.lang.String)
+	 * Returns the SeatHold 
+	 * 		HoldID, TotalPrice, LevelInfo Array [Level ID, Total Seats ] 
+	 */
 
 	public SeatHold findAndHoldSeats(int numSeats, int minLevel, int maxLevel, String customerEmail) {
 		// TODO Auto-generated method stub
@@ -62,10 +79,30 @@ public class TicketServiceImpl implements TicketService{
 		
 		HoldHeader hh = new HoldHeader();
 		
-		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();  
-				
+		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();
+		
+		/*
+		 * Since MinLevel and MaxLevel are optional, this code defaults the Minlevel to 1 and MaxLevel to 4 .. 
+		 */
+		
+		if(minLevel==0) { 
+			minLevel = defaultMinLevel; 
+		}
+		if(maxLevel ==0 ){ 
+			maxLevel =defaultMaxLevel ;
+		}
+		
 		int unAssignedSeats = numSeats;
 		String successFlag = "Y";
+		
+		/*
+		 * Logic to determine the best available seats per level. 
+		 * 
+		 * Algorithm always start with lower Level ID (Assuming 1 being the best available seating ) 
+		 * and checks for the available seats. If the lower level ID has insufficient number of seats, 
+		 * it captures seats that available in the level and goes to the next level. 
+		 * 
+		 */
 		
 		for (int i= minLevel ; i<=maxLevel && unAssignedSeats>0 ; i++){
 			
@@ -73,7 +110,7 @@ public class TicketServiceImpl implements TicketService{
 			int seatsAvailable = numSeatsAvailable(i); 
 			int remainingSeats = seatsAvailable - unAssignedSeats;
 			
-			System.out.println("Seats Available ......"+seatsAvailable);
+			log.debug("Seats Available ......"+seatsAvailable);
 			
 			if(seatsAvailable> 0 ){
 				
@@ -90,22 +127,33 @@ public class TicketServiceImpl implements TicketService{
 					hl.setLevelID(i);
 					hl.setSeatCount(seatsAvailable);										
 				}		
-				System.out.println("unAssignedSeats ...... " +unAssignedSeats);
+				log.debug("unAssignedSeats ...... " +unAssignedSeats);
 				holdLinesList.add(hl);
 			}
 			else  { 
-				
+				/*
+				 * 
+				 * If the program is unable to assign seats, program will exit out. 
+				 * It is All or None 
+				 * 
+				 */
 				if(i==maxLevel) { 
 					successFlag = "N";
 					resp.setReturnMessage("Unable to assign the seats. Seats are not available");
-					System.out.println("Unable to assign the seats. Seats are not available" ); 
+					log.info("Unable to assign the seats. Seats are not available" ); 
 				}
 			}
 		}
+		
+		/*
+		 *  Once the program determines the best available seats, data will be stored in the 
+		 *  HOLD_HEADERS and HOLD_LINES Tables
+		 * 
+		 */
 		if (successFlag.equals("Y")) { 
 			hh.setCustomerEmail(customerEmail);
 			Date holdTime = new Date();
-			System.out.println("Hold time "+holdTime);
+			log.info("Hold time "+holdTime);
 			hh.setHoldTime(holdTime );
 			//hs.setLevelID(levelID);
 			hh.setReservedFlag("N");			
@@ -127,13 +175,20 @@ public class TicketServiceImpl implements TicketService{
 			}
 			resp.setPrice(totalPrice);
 			resp.setLevelInfo(levelInfoList);
-			System.out.println(holdID);
+			log.info(holdID);
 		}
 		
 			
 		return resp;
 	}
-
+	
+	/*
+	 * 
+	 * (non-Javadoc)
+	 * @see com.kk.ticket.service.TicketService#reserveSeats(int, java.lang.String)
+	 * 
+	 * This function reserve the seats for a give hold ID
+	 */
 	public String reserveSeats(int seatHoldId, String customerEmail) {
 		// TODO Auto-generated method stub
 		String resp  = "";
@@ -158,11 +213,9 @@ public class TicketServiceImpl implements TicketService{
 				vl.setRemainingSeats(remainingSeats);
 				saveVenue(vl);				
 			}
-			System.out.println("......... Updating the Header ..........");
 			hh.setHoldHeaderID(seatHoldId);
 			hh.setHoldLines(null);
 			saveHolds(hh,"Y");
-			System.out.println("......... Completed ..........");
 
 			
 		}
@@ -197,18 +250,18 @@ public class TicketServiceImpl implements TicketService{
 	    @SuppressWarnings("unchecked")
 		List<HoldHeader> holdList = holdC.list();
 	    
-	    System.out.println("Size of Holds " + holdList.size());
+	    log.info("Size of Holds " + holdList.size());
 	    
 	    for (final HoldHeader hh : holdList) {	 
 	    	
 	    	for(final HoldLines hl : hh.getHoldLines()) {	    		
 	    		if(hl.getLevelID() == levelID) { 
 	    			activeHolds = activeHolds +hl.getSeatCount();
-	    			System.out.println("Hold Seat Count " + hl.getLevelID() +" ..... " + hl.getSeatCount() );
+	    			log.info("Hold Seat Count " + hl.getLevelID() +" ..... " + hl.getSeatCount() );
 	    		}
 	    	}
 	    	
- 	    	System.out.println("activeHolds " + activeHolds);
+	    	log.info("activeHolds " + activeHolds);
  	    	
 	    	//activeHolds = activeHolds+b.getSeatCount();
 	    }		
