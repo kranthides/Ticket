@@ -1,4 +1,4 @@
-package com.kk.ticket;
+package com.kk.ticket.main;
 
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
