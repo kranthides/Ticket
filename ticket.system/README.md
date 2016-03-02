@@ -10,5 +10,4 @@ Design & Architecture
 	This project is using Java 7, Hibernate, H2 (In memory database) and Maven build tool.
 	
 	Following Data Model is used to design this APP. 
-
-	 ![Alt text](https://github.com/kranthides/Ticket/blob/master/ticket.system/TicketSystem_DataModel.png?raw=true "Data Model")
+	![image](ttps://github.com/kranthides/Ticket/blob/master/ticket.system/TicketSystem_DataModel.png?)
