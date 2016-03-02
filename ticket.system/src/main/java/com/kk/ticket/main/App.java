@@ -1,5 +1,8 @@
 package com.kk.ticket.main;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -28,7 +31,10 @@ public class App
 		factory= util.createHibernateSession();
 		System.out.println("Database Intilization Completed");
 
-    	Scanner reader = new Scanner(System.in);  // Reading from System.in
+    	//Scanner reader = new Scanner(System.in);  // Reading from System.in
+    	
+		BufferedReader buf = new BufferedReader (new InputStreamReader (System.in));
+		String line;
 
     	while (true) {
 	    	int option = 0;
@@ -42,34 +48,77 @@ public class App
 		    	System.out.println("3. Reserve the Seats ");
 		    	System.out.println("4. Exit ");
 		    	System.out.println("");
-	
-		    	option = reader.nextInt();
-		    	System.out.println("Selected Option " +option);
+				
+		    	line = buf.readLine ();
+		    	
+		    	if(line.isEmpty()){
+		    		System.out.println("Please enter valid option, Option is required");
+		    		continue;
+		    	}
+
+		    	option = Integer.parseInt(line);
 		    	TicketServiceImpl ts = new TicketServiceImpl(factory);
 	
 		    	if(option == 1 ){
 		    		
 		    		/* Getting the Latest Ticket Count */
-		    		
+		    		System.out.println("Please enter the level ID (Optional)");
+			    	line = buf.readLine ();
+			    	int LevelID;
+			    	
+			    	if(line.isEmpty()){
+			    		LevelID =0 ;
+			    	} else { 
+			    		LevelID = Integer.parseInt(line);
+			    	}
+			    	
 		    		System.out.println("Please Enter the Venue Level ID" );
-		    		int LevelID = reader.nextInt();		    		
+		    		//int LevelID = reader.nextInt();		    		
 		    		System.out.println("Total Available Seats " +ts.numSeatsAvailable(LevelID));
 		    		
 		    	} else if(option == 2 ){
 		    		
 		    		/* Holding the seats */ 
 		    		
-		    		System.out.println("Please Enter the Total Number Of Seats (optional)" );
-		    		int totalNumberOfSeats = reader.nextInt();
-		    		
+		    		System.out.println("Please Enter the Total Number Of Seats (Required)" );
+		    		int totalNumberOfSeats;
+			    	line = buf.readLine ();
+			    	if(line.isEmpty()){
+			    		System.out.println("Please enter the valid number of Seats" );
+			    		continue;
+ 			    	} else {  			    		
+ 			    		totalNumberOfSeats = Integer.parseInt(line);
+ 			    	}
+			    	
 		    		System.out.println("Please Enter Min Level(Optional) " );	    		
-		    		int minLevel = reader.nextInt();
+		    		int minLevel;
+			    	line = buf.readLine ();
+			    	if(line.isEmpty()){
+			    		minLevel=0;
+ 			    	} else {  			    		
+ 			    		minLevel = Integer.parseInt(line);
+ 			    	}		    		
 		    		
 		    		System.out.println("Please Enter Max Level(Optional) " );
-		    		int maxLevel = reader.nextInt();
+		    		int maxLevel;
+			    	line = buf.readLine ();
+			    	if(line.isEmpty()){
+			    		maxLevel=0;
+ 			    	} else {  			    		
+ 			    		maxLevel = Integer.parseInt(line);
+ 			    	}			    		
 		    		
 		    		System.out.println("Please Enter Customer Email " );
-		    		String customerEmail = reader.next();
+		    		String customerEmail ;
+			    	line = buf.readLine ();	
+			    	
+			    	if(line.isEmpty()){
+			    		System.out.println("Please Enter the valid Email ");
+			    		continue;
+ 			    	} else {  			    		
+ 			    		customerEmail = line;
+ 			    	}			    		
+
 		    		
 		    		SeatHold sResp = new SeatHold();
 		    		
@@ -80,22 +129,42 @@ public class App
 		    		
 		    	} else if(option == 3) { 
 		    		System.out.println("Please Enter the HoldID" );
-		    		int HoldID = reader.nextInt();
+		    		int HoldID ;
+			    	line = buf.readLine ();	
+			    	
+			    	if(line.isEmpty()){
+			    		System.out.println("Please Enter the Valid HolidID ");
+			    		continue;
+ 			    	} else {  			    		
+ 			    		HoldID = Integer.parseInt(line);
+ 			    	}			    		
+		    		
 		    		
 		    		System.out.println("Please Enter Customer Email " );
-		    		String customerEmail = reader.next();
-	
+		    		String customerEmail;
+			    	line = buf.readLine ();	
+			    	if(line.isEmpty()){
+			    		customerEmail = "";			    		
+ 			    	} else {  			    		
+ 			    		customerEmail = line;
+ 			    	}			    		
+
 		    		String reserveResp = ts.reserveSeats(HoldID, customerEmail);
 		    		
 		    		System.out.println(reserveResp);
 		    		
-		    	} else if(option == 4){	    		
+		    	} else if(option == 4){	  
+		    		buf.close();
 		    		System.out.println("Closing the Application");
-		    		break;
+		    		System.exit(0);
 	 	    	}else {
 		    		System.out.println("Invalid Option, Please select the valid option");	    		
 		    	}
-	    	}catch(NumberFormatException ne) {
+	    	}catch (IOException io){
+	    		io.printStackTrace();
+	    		break;	    		
+	    	}
+	    	catch(NumberFormatException ne) {
 	    		ne.printStackTrace();
 	    		break;
 	    	}catch (InputMismatchException ie) {
@@ -103,7 +172,6 @@ public class App
 	    		break;
 	    	}
     	}
-		reader.close();	
-		return;
+    	System.out.println("System Exited");
     }
 }

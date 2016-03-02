@@ -27,7 +27,7 @@ public class TicketServiceImpl implements TicketService{
 	private static Logger log = Logger.getLogger(TicketServiceImpl.class);
 
 	private static SessionFactory factory;
-	private static int NoOfSeconds =10; 
+	private static int NoOfSeconds =30; 
 	private final static int defaultMinLevel = 1 ;
 	private final static int defaultMaxLevel = 4; 
 	
@@ -199,10 +199,16 @@ public class TicketServiceImpl implements TicketService{
 		cal.add(Calendar.SECOND, -NoOfSeconds);
 		
 		HoldHeader hh = getHolds(seatHoldId);
-		
-		if(hh.getHoldTime().compareTo(cal.getTime()) <0  ){
+		if(hh.getHoldHeaderID() == 0) {
+			
+			resp = "Invalid Hold ID";
+			
+		} else if(hh.getHoldTime().compareTo(cal.getTime()) <0  ){
+			
 			resp = "This hold is expired";
-		} else {			
+			
+		} else {		
+			
 			hh.setReservedFlag("Y");
 
 			for(HoldLines hl : hh.getHoldLines()){
@@ -215,9 +221,7 @@ public class TicketServiceImpl implements TicketService{
 			}
 			hh.setHoldHeaderID(seatHoldId);
 			hh.setHoldLines(null);
-			saveHolds(hh,"Y");
-
-			
+			saveHolds(hh,"Y");			
 		}
 		
 		return resp;
