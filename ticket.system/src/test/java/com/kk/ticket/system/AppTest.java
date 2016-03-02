@@ -19,7 +19,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 /**
- * Unit test for simple App.
+ * Unit test for Ticketing App.
  */
 public class AppTest 
     extends TestCase
@@ -45,37 +45,24 @@ public class AppTest
     {
         return new TestSuite( AppTest.class );
     }
+    
+    
+    
 
-    /* Testing GetUser Calls  */
- /*   
-	public void testGetOperation() { 
-		Session session = factory.openSession();
-		Criteria stageLevel = session.createCriteria(VenueLevel.class);
-		
-		
-	    @SuppressWarnings("unchecked")
-		final List<VenueLevel> slist = stageLevel.list();
-	    
-	    int count =0 ;
-	    int totalSeats = 0;
-	    for (final VenueLevel b : slist) {
-	    	count++;
-	    	totalSeats = totalSeats + b.getRemainingSeats();
-	    }
-		
-		assertEquals(count, 4);
-		assertEquals(totalSeats, 6250);
-
-	}
-*/	
+ 
 	public void testHoldOperation() { 
 		
     	TicketServiceImpl ts = new TicketServiceImpl(factory);
+    	
+    	// Testing the Num Seats Available Call 
     	int seatsLevel1 = ts.numSeatsAvailable(1);
-    	int seatsLevel2 = ts.numSeatsAvailable(2);
     	
 		SeatHold sResp = new SeatHold();
 		
+		
+		
+    	// Testing the Find and Hold Seats Service 
+
 		sResp = ts.findAndHoldSeats(10, 1, 2, "test@test.com");
 		
 		int assignedSeats = 0;
@@ -87,18 +74,24 @@ public class AppTest
 		
 		assertEquals(seatsLevel1-assignedSeats, seatsLevel1-10);
 		
+		
+    	/**Testing the Reserve seats Service 
+    	 * Testing the following scenarios  
+    	 * 1. Reserve Flag must be updated to Y 
+    	 * 2. Remaining should be reduced to the updated value
+    	 */
+
 		String reserveResp = ts.reserveSeats(sResp.getHoldID(), "test@test.com");
 		System.out.println("sResp.getHoldID() " +sResp.getHoldID());
 
-		System.out.println("Xyyyyyz " +reserveResp);
 		HoldHeader hh = new HoldHeader();
 		
 		hh = ts.getHolds(sResp.getHoldID());
-		System.out.println(hh.getReservedFlag());
  		assertTrue(hh.getReservedFlag().equals("Y"));
 		
-    	
-
+ 		int availableCount = ts.numSeatsAvailable(1);
+ 		assertEquals(seatsLevel1-10,availableCount);
+ 		
 	}
-	
+			
 }
