@@ -43,7 +43,8 @@ public class TicketServiceImpl implements TicketService{
 		}
 			
 		
-	    final List<VenueLevel> slist = c.list();
+	    @SuppressWarnings("unchecked")
+		final List<VenueLevel> slist = c.list();
 	    int totalRemainingSeats = 0;
 	    
 	    for (final VenueLevel b : slist) {	    	
@@ -109,7 +110,7 @@ public class TicketServiceImpl implements TicketService{
 			//hs.setLevelID(levelID);
 			hh.setReservedFlag("N");			
 			hh.setHoldLines( holdLinesList);
-			int holdID = saveHolds(hh);
+			int holdID = saveHolds(hh,"N");
 			
 			resp.setHoldID(holdID);
 			double totalPrice = 0;
@@ -148,15 +149,21 @@ public class TicketServiceImpl implements TicketService{
 			resp = "This hold is expired";
 		} else {			
 			hh.setReservedFlag("Y");
-			
+
 			for(HoldLines hl : hh.getHoldLines()){
 				VenueLevel vl = new VenueLevel();				
 				vl = getVenueList(hl.getLevelID());
 				int remainingSeats = vl.getRemainingSeats() - hl.getSeatCount();
 				vl.setLevelID(hl.getLevelID());
-				vl.setRemainingSeats(remainingSeats);				
+				vl.setRemainingSeats(remainingSeats);
 				saveVenue(vl);				
 			}
+			System.out.println("......... Updating the Header ..........");
+			hh.setHoldHeaderID(seatHoldId);
+			hh.setHoldLines(null);
+			saveHolds(hh,"Y");
+			System.out.println("......... Completed ..........");
+
 			
 		}
 		
@@ -187,7 +194,8 @@ public class TicketServiceImpl implements TicketService{
 			holdC.add(Subqueries.propertyIn("holdHeaderID", holdLinesSQ));
 		}		
 		
-	    List<HoldHeader> holdList = holdC.list();
+	    @SuppressWarnings("unchecked")
+		List<HoldHeader> holdList = holdC.list();
 	    
 	    System.out.println("Size of Holds " + holdList.size());
 	    
@@ -214,36 +222,39 @@ public class TicketServiceImpl implements TicketService{
 		
 		session.update(vl);						
 		tx.commit();
+		session.close();
 		
 	}	
 
 	
-	public int saveHolds(HoldHeader hh) {
+	public int saveHolds(HoldHeader hh, String skipLines) {
 
 		Session session = factory.openSession();		
 		Transaction tx = session.beginTransaction();		
-		
 		HoldHeader saveHeader = new HoldHeader();
 		
 		saveHeader.setCustomerEmail(hh.getCustomerEmail());
 		saveHeader.setHoldTime(hh.getHoldTime());
 		saveHeader.setReservedFlag(hh.getReservedFlag());
-		
-		session.save(saveHeader);	
-		int holdID = saveHeader.getHoldHeaderID();
-		saveHeader.setHoldHeaderID(holdID);
-		
-		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();  
+		saveHeader.setHoldHeaderID(hh.getHoldHeaderID());
+		int holdID;
+	
 
-		for(HoldLines hl: hh.getHoldLines()){			
-			hl.setHoldHeaderID(holdID);						
-			holdLinesList.add(hl);
-			session.save(hl);
-		}		
-		
-		
+		session.saveOrUpdate(saveHeader);			
+		holdID = saveHeader.getHoldHeaderID();
+
+		saveHeader.setHoldHeaderID(holdID);
+		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();  
+		if(!(hh.getHoldLines() == null )) { 
+			for(HoldLines hl: hh.getHoldLines()){			
+				hl.setHoldHeaderID(holdID);						
+				holdLinesList.add(hl);
+				session.save(hl);
+			}	
+		}
 		tx.commit();
-		
+		session.close();
+
 		return holdID;
 	}	
 	
@@ -256,9 +267,9 @@ public class TicketServiceImpl implements TicketService{
 		Criteria c = session.createCriteria(VenueLevel.class);
 		c.add(Restrictions.like("levelID", levelID));		
 					
-	    final List<VenueLevel> slist = c.list();
+	    @SuppressWarnings("unchecked")
+		final List<VenueLevel> slist = c.list();
 	    
-	    double price = 0;
 	    for (final VenueLevel b : slist) {
 	    	resp = b;
 	    }
@@ -273,7 +284,8 @@ public class TicketServiceImpl implements TicketService{
 		Criteria c = session.createCriteria(HoldHeader.class);
 		c.add(Restrictions.like("holdHeaderID", holdHeaderID));		
 
-		List<HoldHeader> holdList = c.list();
+		@SuppressWarnings("unchecked")
+		List<HoldHeader> holdList =  c.list();
 		
 		for(HoldHeader hh: holdList) {
 			resp = hh;

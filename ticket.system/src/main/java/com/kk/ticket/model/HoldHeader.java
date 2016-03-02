@@ -7,6 +7,7 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -38,7 +39,7 @@ public class HoldHeader implements Serializable {
 	private String customerEmail ;
 	
 	@OneToMany(cascade=CascadeType.ALL)
-	@JoinColumn(name="holdHeaderID")
+	@JoinColumn(name="holdHeaderID",insertable = false, updatable = false)
 	private Set<HoldLines> holdLines;
 
 	

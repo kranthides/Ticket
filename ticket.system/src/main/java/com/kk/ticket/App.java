@@ -52,9 +52,9 @@ public class App
 		    		/* Getting the Latest Ticket Count */
 		    		
 		    		System.out.println("Please Enter the Venue Level ID" );
-		    		int LevelID = reader.nextInt();
+		    		int LevelID = reader.nextInt();		    		
+		    		System.out.println("Total Available Seats " +ts.numSeatsAvailable(LevelID));
 		    		
-		    		System.out.println("Total Available Seats " +ts.numSeatsAvailable(LevelID));	    		
 		    	} else if(option == 2 ){
 		    		
 		    		/* Holding the seats */ 
