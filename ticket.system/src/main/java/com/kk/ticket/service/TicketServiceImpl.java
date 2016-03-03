@@ -30,6 +30,9 @@ public class TicketServiceImpl implements TicketService{
 	private static int NoOfSeconds =30; 
 	private final static int defaultMinLevel = 1 ;
 	private final static int defaultMaxLevel = 4; 
+	private final static String G_ERROR_MSG = "ERROR";
+	private final static String G_SUCCESS_MSG = "SUCCESS";
+	private String errorMessage = "";
 	
 	public TicketServiceImpl (SessionFactory sessionFactory){
 		factory = sessionFactory;
@@ -77,6 +80,7 @@ public class TicketServiceImpl implements TicketService{
 		// TODO Auto-generated method stub
 		SeatHold resp = new SeatHold();
 		
+		resp.setReturnMessage(G_SUCCESS_MSG);
 		HoldHeader hh = new HoldHeader();
 		
 		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();
@@ -158,24 +162,28 @@ public class TicketServiceImpl implements TicketService{
 			//hs.setLevelID(levelID);
 			hh.setReservedFlag("N");			
 			hh.setHoldLines( holdLinesList);
-			int holdID = saveHolds(hh,"N");
-			
-			resp.setHoldID(holdID);
-			double totalPrice = 0;
-			
-			Set<LevelInfo> levelInfoList = new HashSet<LevelInfo>();  
+			int holdID = saveHolds(hh);
+			if (holdID > 0 ) { 
+				resp.setHoldID(holdID);
+				double totalPrice = 0;
+				
+				Set<LevelInfo> levelInfoList = new HashSet<LevelInfo>();  
 
-			for (final HoldLines holdLines : hh.getHoldLines()) {
-				LevelInfo l = new LevelInfo();
-				l.setLevelID(holdLines.getLevelID());
-				l.setSeatCount(holdLines.getSeatCount());
-				VenueLevel vl = new VenueLevel();
-				totalPrice = holdLines.getSeatCount() * vl.getPrice();
-				levelInfoList.add(l);
+				for (final HoldLines holdLines : hh.getHoldLines()) {
+					LevelInfo l = new LevelInfo();
+					l.setLevelID(holdLines.getLevelID());
+					l.setSeatCount(holdLines.getSeatCount());
+					VenueLevel vl = new VenueLevel();
+					totalPrice = holdLines.getSeatCount() * vl.getPrice();
+					levelInfoList.add(l);
+				}
+				resp.setPrice(totalPrice);
+				resp.setLevelInfo(levelInfoList);
+				log.info(holdID);
+				
+			}else {
+				resp.setReturnMessage(G_ERROR_MSG + " - "+ errorMessage);
 			}
-			resp.setPrice(totalPrice);
-			resp.setLevelInfo(levelInfoList);
-			log.info(holdID);
 		}
 		
 			
@@ -199,6 +207,11 @@ public class TicketServiceImpl implements TicketService{
 		cal.add(Calendar.SECOND, -NoOfSeconds);
 		
 		HoldHeader hh = getHolds(seatHoldId);
+		/*
+		 *  If the user entered invalid hold ID , it returns the Error;
+		 *  If the user entered expired hold ID, it returns the error
+		 */
+		
 		if(hh.getHoldHeaderID() == 0) {
 			
 			resp = "Invalid Hold ID";
@@ -208,26 +221,54 @@ public class TicketServiceImpl implements TicketService{
 			resp = "This hold is expired";
 			
 		} else {		
-			
+			/*
+			 *  If the hold is not expired 
+			 *  Following logic updates two tables 
+			 *  1. Venue Level with Remaining Seats available 
+			 *  2. Reserved flag with "Y" in Holds Header table 
+			 *  
+			 */
 			hh.setReservedFlag("Y");
-
+			
+			String errorFlag = "N"; 
 			for(HoldLines hl : hh.getHoldLines()){
 				VenueLevel vl = new VenueLevel();				
 				vl = getVenueList(hl.getLevelID());
 				int remainingSeats = vl.getRemainingSeats() - hl.getSeatCount();
 				vl.setLevelID(hl.getLevelID());
 				vl.setRemainingSeats(remainingSeats);
-				saveVenue(vl);				
+				String saveVenueResp = saveVenue(vl);
+				
+				if(saveVenueResp.equals(G_ERROR_MSG)){
+					errorFlag = "Y";
+				}
+				
 			}
-			hh.setHoldHeaderID(seatHoldId);
-			hh.setHoldLines(null);
-			saveHolds(hh,"Y");			
+			if (errorFlag.equals("N")){
+				hh.setHoldHeaderID(seatHoldId);
+				hh.setHoldLines(null);
+				seatHoldId= saveHolds(hh);
+				log.info("Seat Hold "+ seatHoldId);
+				if(seatHoldId > 0 ) {
+					resp = G_SUCCESS_MSG;
+				}
+				else {
+					resp = G_ERROR_MSG + " - "+errorMessage;
+				}
+			} else {
+				resp = G_ERROR_MSG + " - "+errorMessage;
+			}
+			
 		}
 		
 		return resp;
 	}
 	
-	
+	/*
+	 *  Function to determine the active holds 
+	 *  This includes Available Seats and seats that are not expired in the holds tables
+	 *  
+	 */
 	public int getActiveHoldCount(int levelID){ 
 		int activeHolds = 0;
 		
@@ -272,48 +313,81 @@ public class TicketServiceImpl implements TicketService{
 		return activeHolds;
 	}
 
-	public void saveVenue(VenueLevel vl) {
-
+	/*
+	 *  Function to save Venue information in Venue Level Object 
+	 */
+	public String  saveVenue(VenueLevel vl) {
+		
+		String resp = G_SUCCESS_MSG; 
+		errorMessage="";
 		Session session = factory.openSession();		
 		Transaction tx = session.beginTransaction();	
-		
-		session.update(vl);						
-		tx.commit();
-		session.close();
-		
+		try { 
+			session.update(vl);
+		}
+		catch(Exception e ){
+			resp = G_ERROR_MSG;
+			errorMessage = "Exception occured in SaveVenue Method - "+e.getMessage();			
+			tx.rollback();
+			session.close();
+		} 
+		finally {
+			tx.commit();
+			session.close();
+		}
+		return resp;
+					
 	}	
 
+	/*
+	 * Following function saves the hold information in 
+	 * HOLD_HEADER
+	 * HOLD_LINES table 
+	 */
 	
-	public int saveHolds(HoldHeader hh, String skipLines) {
-
+	public int saveHolds(HoldHeader hh) {
+		
+		int holdID =0 ;
 		Session session = factory.openSession();		
 		Transaction tx = session.beginTransaction();		
-		HoldHeader saveHeader = new HoldHeader();
+
+		try {
+			HoldHeader saveHeader = new HoldHeader();
+			
+			saveHeader.setCustomerEmail(hh.getCustomerEmail());
+			saveHeader.setHoldTime(hh.getHoldTime());
+			saveHeader.setReservedFlag(hh.getReservedFlag());
+			saveHeader.setHoldHeaderID(hh.getHoldHeaderID());
 		
-		saveHeader.setCustomerEmail(hh.getCustomerEmail());
-		saveHeader.setHoldTime(hh.getHoldTime());
-		saveHeader.setReservedFlag(hh.getReservedFlag());
-		saveHeader.setHoldHeaderID(hh.getHoldHeaderID());
-		int holdID;
 	
-
-		session.saveOrUpdate(saveHeader);			
-		holdID = saveHeader.getHoldHeaderID();
-
-		saveHeader.setHoldHeaderID(holdID);
-		Set<HoldLines> holdLinesList = new HashSet<HoldLines>();  
-		if(!(hh.getHoldLines() == null )) { 
-			for(HoldLines hl: hh.getHoldLines()){			
-				hl.setHoldHeaderID(holdID);						
-				holdLinesList.add(hl);
-				session.save(hl);
-			}	
+			session.saveOrUpdate(saveHeader);			
+			holdID = saveHeader.getHoldHeaderID();
+	
+			saveHeader.setHoldHeaderID(holdID);
+			Set<HoldLines> holdLinesList = new HashSet<HoldLines>();  
+			if(!(hh.getHoldLines() == null )) { 
+				for(HoldLines hl: hh.getHoldLines()){			
+					hl.setHoldHeaderID(holdID);						
+					holdLinesList.add(hl);
+					session.save(hl);
+				}	
+			}
+		}catch(Exception e){
+			holdID  = -1;
+			tx.rollback();
+			session.close();
+			errorMessage = "Exception occured in saveHolds Method"+e.getMessage();
+		}finally { 
+			tx.commit();
+			session.close();
 		}
-		tx.commit();
-		session.close();
-
+		
 		return holdID;
 	}	
+	
+	/*
+	 *  Following function returns the venueLevel object for a given LevelID
+	 */
 	
 	public VenueLevel getVenueList(int levelID) {
 		// TODO Auto-generated method stub
@@ -332,6 +406,10 @@ public class TicketServiceImpl implements TicketService{
 	    }
 		return resp;
 	}
+	
+	/*
+	 *  Following function returns the Holds Object for a give hold ID 
+	 */
 	
 	public HoldHeader getHolds(int holdHeaderID){
 		HoldHeader resp = new HoldHeader();
