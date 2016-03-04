@@ -26,14 +26,15 @@
 	
 	### Building the App 
 	
-		/usr/maven 
+		$maven_home/mvn package  
 	
 	### Testing the App
 	
-		/usr/maven 
+		$maven_home/mvn test 
 
 	### Running the App
-	
+		cd target 
+		java -jar ticket.system.jar 
 		
 
 
