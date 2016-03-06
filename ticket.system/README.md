@@ -35,6 +35,16 @@
 	### Running the App
 		cd target 
 		java -jar ticket.system.jar 
+		And Select the Respective Option 
+		
+		
+			Select the following options
+			-----------------------------
+			1. Get the Seats Information
+			2. Hold the Seats 
+			3. Reserve the Seats 
+			4. Exit 
+
 		
 
 ##Test Case Scenarios 
@@ -67,11 +77,11 @@
 				1. User will Query the number of seats available for a given level 
 				2. User holds X number of Seats which is more than available seats
 	
-## Things that needs to be considered to improve this Application 
+## Things to improve 
 	
 	* I designed this app to run it as standalone application using In Memory database, which makes 
 	  the application vard hard to test concurrent the requests.
 	* This application is designed with minimum exception handling, not returning the specific
-	  error codes
+	  error codes based on the scenarios 
 	* Not using the property files to store few values to avoid the hard coding.    
 	
