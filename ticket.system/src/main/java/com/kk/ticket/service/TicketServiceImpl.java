@@ -174,7 +174,7 @@ public class TicketServiceImpl implements TicketService {
 			if (holdID > 0) {
 				resp.setHoldID(holdID);
 				double totalPrice = 0;
-
+				
 				Set<LevelInfo> levelInfoList = new HashSet<LevelInfo>();
 
 				for (final HoldLines holdLines : hh.getHoldLines()) {
@@ -182,7 +182,8 @@ public class TicketServiceImpl implements TicketService {
 					l.setLevelID(holdLines.getLevelID());
 					l.setSeatCount(holdLines.getSeatCount());
 					VenueLevel vl = new VenueLevel();
-					totalPrice = holdLines.getSeatCount() * vl.getPrice();
+					vl = getVenueList(holdLines.getLevelID());
+					totalPrice = totalPrice+ holdLines.getSeatCount() * vl.getPrice();
 					levelInfoList.add(l);
 				}
 				resp.setPrice(totalPrice);
